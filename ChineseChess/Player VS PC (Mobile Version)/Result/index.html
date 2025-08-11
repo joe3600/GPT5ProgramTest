@@ -1,1009 +1,1170 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Xiangqi — Mobile-first Web Edition</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <style>
-    :root{
-      --bg:#111316;
-      --panel:#171a1f;
-      --accent:#ff4d4f;
-      --accent-muted:#ffb3b4;
-      --ink:#e6e8eb;
-      --muted:#a2a8b3;
-      --board:#f8e9c9;
-      --board-line:#5b432c;
-      --red:#d8413f;
-      --black:#1e1e1e;
-      --green:#18a058;
-      --yellow:#e6a700;
-    }
-    *{box-sizing:border-box;}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;line-height:1.4;}
-    .wrap{
-      max-width:900px;
-      margin:0 auto;
-      padding:12px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-    header{
-      display:flex;align-items:center;justify-content:space-between;
-      gap:8px;flex-wrap:wrap;
-    }
-    h1{font-size:18px;margin:0;color:var(--ink);font-weight:600;letter-spacing:.2px}
-    .controls{
-      background:var(--panel);
-      border-radius:12px;
-      padding:10px;
-      display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-    }
-    .controls label{font-size:12px;color:var(--muted)}
-    .controls select,.controls button,.controls input[type="range"]{
-      background:#0f1216;border:1px solid #252a31;color:var(--ink);
-      padding:8px 10px;border-radius:10px;font-size:14px;
-    }
-    .controls button{
-      cursor:pointer;border:1px solid #2a313b;
-    }
-    .controls button.primary{background:var(--accent);border-color:var(--accent);color:white}
-    .controls .group{display:flex;align-items:center;gap:8px}
-    .status{
-      font-size:14px;color:var(--accent-muted);
-      padding:6px 0 2px 2px;min-height:22px;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Xiangqi — Mobile-first, Responsive, Smart AI</title>
+<style>
+  :root {
+    --bg: #f7f3e9;
+    --grid: #7b5e2f;
+    --river: #dcd2b6;
+    --red: #c0392b;
+    --black: #2c3e50;
+    --hint: #27ae60;
+    --sel: #f1c40f;
+    --piece-fill: #fff;
+    --piece-stroke: #333;
+  }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: #222;
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  }
+  .app {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 8px 10px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .left, .right {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  button, select, input[type="number"], input[type="range"] {
+    border: 1px solid #ccc;
+    background: white;
+    color: #222;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.6; cursor: not-allowed;
+  }
+  .status {
+    font-weight: 600;
+    color: #555;
+  }
 
-    .board-wrap{
-      background:var(--panel);
-      border-radius:16px;
-      padding:10px;
-    }
-    canvas{
-      width:100%;
-      height:auto;
-      display:block;
-      touch-action:none;
-      border-radius:12px;
-      background:var(--board);
-    }
-    footer{color:var(--muted);font-size:12px;padding:3px 2px 12px}
-    /* Make buttons larger on mobile */
-    @media (max-width:480px){
-      .controls select,.controls button{font-size:15px;padding:10px 12px}
-      .controls input[type="range"]{width:120px}
-    }
-  </style>
+  /* Board container maintains Xiangqi aspect ratio (9 cols x 10 rows) */
+  .board-wrap {
+    width: 100%;
+    /* 10 rows high vs 9 cols wide: height/width = 10/9 */
+    aspect-ratio: 9 / 10;
+    background: var(--river);
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    position: relative;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  svg {
+    width: 100%; height: 100%;
+    display: block;
+  }
+  .grid-line {
+    stroke: var(--grid);
+    stroke-width: 1.5;
+  }
+  .river-text {
+    font: 700 6.2px/1.2 "STKaiti","Kaiti SC","KaiTi","Kai","Noto Serif CJK SC",serif;
+    fill: rgba(0,0,0,0.25);
+    letter-spacing: 1px;
+  }
+  .piece {
+    cursor: pointer;
+  }
+  .p-circle {
+    fill: var(--piece-fill);
+    stroke: var(--piece-stroke);
+    stroke-width: 1.2;
+  }
+  .p-label {
+    font: 700 7.2px/1 "STKaiti","Kaiti SC","KaiTi","Kai","Noto Serif CJK SC",serif;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .p-red .p-label { fill: var(--red); }
+  .p-black .p-label { fill: var(--black); }
+  .hint {
+    fill: rgba(39,174,96,0.18);
+    stroke: var(--hint);
+    stroke-width: 0.8;
+  }
+  .sel {
+    fill: rgba(241,196,15,0.2);
+    stroke: var(--sel);
+    stroke-width: 0.9;
+  }
+  .coords {
+    font: 500 5px/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    fill: rgba(0,0,0,0.35);
+  }
+  .footer {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    margin-top: 6px;
+  }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Chinese Chess (Xiangqi)</h1>
-      <div class="controls">
-        <div class="group">
-          <label for="side">Your side</label>
-          <select id="side">
-            <option value="r">Red (moves first)</option>
-            <option value="b">Black</option>
-          </select>
-        </div>
-        <div class="group">
-          <label for="depth">AI depth</label>
-          <input id="depth" type="range" min="1" max="4" step="1" value="2" />
-          <span id="depthLabel">2</span>
-        </div>
-        <div class="group">
-          <button id="new" class="primary">New game</button>
-          <button id="undo">Undo</button>
-        </div>
+  <div class="app">
+    <div class="toolbar">
+      <div class="left">
+        <button id="newBtn">New game</button>
+        <button id="switchBtn">Switch sides</button>
+        <button id="undoBtn">Undo</button>
       </div>
-    </header>
-
-    <div class="status" id="status">Ready.</div>
-
-    <div class="board-wrap">
-      <canvas id="board" width="900" height="1012"></canvas>
+      <div class="right">
+        <label>AI time
+          <input id="timeRange" type="range" min="500" max="5000" step="250" value="2000" />
+        </label>
+        <span id="timeLabel" class="status">2.0s/move</span>
+      </div>
     </div>
 
-    <footer>
-      Tip: Tap a piece to see legal moves. Tap again to deselect. Long-press on empty to clear selection.
-    </footer>
+    <div class="status" id="status">Your move as Red.</div>
+
+    <div class="board-wrap" id="boardWrap" aria-label="Xiangqi board">
+      <!-- SVG board injected by JS -->
+    </div>
+
+    <div class="footer">Tip: Tap once to select a piece, then tap a highlighted dot to move. Long-press Undo if you blunder.</div>
   </div>
 
-  <script>
-  (() => {
-    // Piece notation: uppercase = Red, lowercase = Black
-    // K/A/E/H/R/C/S  (General, Advisor, Elephant, Horse, Rook, Cannon, Soldier)
-    // Board: 10 rows x 9 cols. row 0 is Black back rank; row 9 is Red back rank.
-    const EMPTY = '.';
-    const START_POS = [
-      ['r','h','e','a','k','a','e','h','r'],
-      ['.','.','.','.','.','.','.','.','.'],
-      ['.','c','.','.','.','.','.','c','.'],
-      ['s','.','s','.','s','.','s','.','s'],
-      ['.','.','.','.','.','.','.','.','.'],
-      ['.','.','.','.','.','.','.','.','.'],
-      ['S','.','S','.','S','.','S','.','S'],
-      ['.','C','.','.','.','.','.','C','.'],
-      ['.','.','.','.','.','.','.','.','.'],
-      ['R','H','E','A','K','A','E','H','R'],
-    ];
+<script>
+(function(){
+  "use strict";
 
-    // UI state
-    const canvas = document.getElementById('board');
-    const ctx = canvas.getContext('2d');
-    const statusEl = document.getElementById('status');
-    const sideSel = document.getElementById('side');
-    const newBtn = document.getElementById('new');
-    const undoBtn = document.getElementById('undo');
-    const depthInput = document.getElementById('depth');
-    const depthLabel = document.getElementById('depthLabel');
+  // Core constants
+  const RED = 1, BLACK = -1;
+  const PIECES = {
+    G: 'G', // General: 帥/將
+    A: 'A', // Advisor: 仕/士
+    E: 'E', // Elephant: 相/象
+    H: 'H', // Horse: 馬
+    R: 'R', // Chariot: 車
+    C: 'C', // Cannon: 炮/砲
+    S: 'S'  // Soldier: 兵/卒
+  };
 
-    // DPR-aware sizing
-    function resizeCanvas() {
-      // Maintain square cells: width intervals = 8, height intervals = 9, so height = width * 9/8
-      const cssWidth = Math.min(document.querySelector('.board-wrap').clientWidth - 20, 900);
-      const cssHeight = Math.round(cssWidth * 9 / 8 + 12); // small border for palace diagonals
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      canvas.style.width = cssWidth + 'px';
-      canvas.style.height = cssHeight + 'px';
-      canvas.width = Math.floor(cssWidth * dpr);
-      canvas.height = Math.floor(cssHeight * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      draw();
+  // UI elements
+  const elWrap = document.getElementById('boardWrap');
+  const elStatus = document.getElementById('status');
+  const newBtn = document.getElementById('newBtn');
+  const switchBtn = document.getElementById('switchBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const timeRange = document.getElementById('timeRange');
+  const timeLabel = document.getElementById('timeLabel');
+
+  // SVG setup constants
+  // Logical board coordinates: 9 files (x:0..8), 10 ranks (y:0..9)
+  // We'll draw using a 90x100 viewBox (each grid cell ~10 units)
+  const VB_W = 90, VB_H = 100;
+  const CELL = 10;
+  const PAD = 5; // padding inside viewBox
+  const BOARD_X0 = PAD, BOARD_Y0 = PAD;
+  const BOARD_X1 = VB_W - PAD, BOARD_Y1 = VB_H - PAD;
+
+  // Starting position (10x9 board), from Red's perspective at bottom
+  // Each cell: null or {t:pieceType, c:color}
+  function startPosition() {
+    // Empty 10x9
+    const b = Array.from({length: 10}, () => Array(9).fill(null));
+    // Place pieces
+    const place = (x, y, t, c) => b[y][x] = { t, c };
+    // Chariots
+    place(0,9,PIECES.R,RED); place(8,9,PIECES.R,RED);
+    place(0,0,PIECES.R,BLACK); place(8,0,PIECES.R,BLACK);
+    // Horses
+    place(1,9,PIECES.H,RED); place(7,9,PIECES.H,RED);
+    place(1,0,PIECES.H,BLACK); place(7,0,PIECES.H,BLACK);
+    // Elephants
+    place(2,9,PIECES.E,RED); place(6,9,PIECES.E,RED);
+    place(2,0,PIECES.E,BLACK); place(6,0,PIECES.E,BLACK);
+    // Advisors
+    place(3,9,PIECES.A,RED); place(5,9,PIECES.A,RED);
+    place(3,0,PIECES.A,BLACK); place(5,0,PIECES.A,BLACK);
+    // Generals
+    place(4,9,PIECES.G,RED);
+    place(4,0,PIECES.G,BLACK);
+    // Cannons
+    place(1,7,PIECES.C,RED); place(7,7,PIECES.C,RED);
+    place(1,2,PIECES.C,BLACK); place(7,2,PIECES.C,BLACK);
+    // Soldiers
+    [0,2,4,6,8].forEach(x => place(x,6,PIECES.S,RED));
+    [0,2,4,6,8].forEach(x => place(x,3,PIECES.S,BLACK));
+    return b;
+  }
+
+  // Chinese labels
+  const LABELS = {
+    [PIECES.G]: { [RED]:'帥', [BLACK]:'將' },
+    [PIECES.A]: { [RED]:'仕', [BLACK]:'士' },
+    [PIECES.E]: { [RED]:'相', [BLACK]:'象' },
+    [PIECES.H]: { [RED]:'馬', [BLACK]:'馬' },
+    [PIECES.R]: { [RED]:'車', [BLACK]:'車' },
+    [PIECES.C]: { [RED]:'炮', [BLACK]:'砲' },
+    [PIECES.S]: { [RED]:'兵', [BLACK]:'卒' },
+  };
+
+  // Game state
+  let board = startPosition();
+  let sideToMove = RED; // Red moves first
+  let humanSide = RED;  // Human plays Red by default
+  let selected = null;  // {x,y} selected square
+  let legalMovesFromSel = []; // cached legal moves from selected
+  let history = []; // move history for undo, storing {move, captured, prevHash, ...}
+  let gameOver = false;
+  let searching = false;
+  let aiTimeMs = parseInt(timeRange.value,10);
+
+  // Transposition table (simple)
+  const TT = new Map();
+
+  // Zobrist hashing
+  const Z = (() => {
+    const rand32 = () => (Math.random()*0x100000000)>>>0;
+    const keys = {};
+    for (const t of Object.values(PIECES)) {
+      keys[t] = { [RED]:[], [BLACK]:[] };
+      for (let y=0;y<10;y++){
+        keys[t][RED][y] = [];
+        keys[t][BLACK][y] = [];
+        for (let x=0;x<9;x++){
+          keys[t][RED][y][x] = rand32();
+          keys[t][BLACK][y][x] = rand32();
+        }
+      }
     }
-    window.addEventListener('resize', () => {
-      resizeCanvas();
+    const sideKey = rand32();
+    return { keys, sideKey };
+  })();
+
+  let hash = computeHash(board, sideToMove);
+
+  function computeHash(b, stm){
+    let h = 0|0;
+    for (let y=0;y<10;y++){
+      for (let x=0;x<9;x++){
+        const p = b[y][x];
+        if (!p) continue;
+        h ^= Z.keys[p.t][p.c][y][x];
+      }
+    }
+    if (stm === RED) h ^= Z.sideKey;
+    return h>>>0;
+  }
+
+  function toggleSide(s){ return -s; }
+
+  // Board helpers
+  function inBoard(x,y){ return x>=0 && x<9 && y>=0 && y<10; }
+  function palaceContains(x,y,c){
+    if (c===RED) return (x>=3 && x<=5 && y>=7 && y<=9);
+    else return (x>=3 && x<=5 && y>=0 && y<=2);
+  }
+  function riverCrossed(y,c){
+    return c===RED ? (y<=4) : (y>=5);
+  }
+
+  // Move representation
+  // move = {fx,fy,tx,ty, piece:{t,c}, capture?:{t,c} }
+  function clonePiece(p){ return p?{t:p.t, c:p.c}:null; }
+
+  // Make/undo moves with hash updates
+  function makeMove(m){
+    const {fx,fy,tx,ty} = m;
+    const p = board[fy][fx];
+    const cap = board[ty][tx];
+
+    // hash out from origin
+    hash ^= Z.keys[p.t][p.c][fy][fx];
+    // hash out captured
+    if (cap) hash ^= Z.keys[cap.t][cap.c][ty][tx];
+
+    // apply move
+    board[ty][tx] = p;
+    board[fy][fx] = null;
+
+    // hash in moved piece at new square
+    hash ^= Z.keys[p.t][p.c][ty][tx];
+
+    // side toggle
+    sideToMove = toggleSide(sideToMove);
+    hash ^= Z.sideKey;
+
+    return cap;
+  }
+  function undoMove(m, captured){
+    const {fx,fy,tx,ty} = m;
+    const p = board[ty][tx];
+
+    // hash out moved piece at new square
+    hash ^= Z.keys[p.t][p.c][ty][tx];
+
+    // restore
+    board[fy][fx] = p;
+    board[ty][tx] = captured || null;
+
+    // hash in moved piece at origin
+    hash ^= Z.keys[p.t][p.c][fy][fx];
+    if (captured) hash ^= Z.keys[captured.t][captured.c][ty][tx];
+
+    // side toggle back
+    sideToMove = toggleSide(sideToMove);
+    hash ^= Z.sideKey;
+  }
+
+  // Get all moves for side c (legal only)
+  function generateLegalMoves(c){
+    const moves = [];
+    for (let y=0;y<10;y++){
+      for (let x=0;x<9;x++){
+        const p = board[y][x];
+        if (!p || p.c !== c) continue;
+        const pseudo = generatePseudoMovesFor(x,y,p);
+        for (const m of pseudo){
+          // filter illegal (self-check and flying general rule handled in check)
+          const cap = makeMove(m);
+          const inCheck = isInCheck(c);
+          undoMove(m, cap);
+          if (!inCheck) moves.push(m);
+        }
+      }
+    }
+    // Move ordering: captures first, closer-to-general moves heuristics
+    moves.sort((a,b)=>{
+      const ca = board[a.ty][a.tx] ? 1 : (a.capture?1:0); // not available here; leave simple
+      const cb = board[b.ty][b.tx] ? 1 : (b.capture?1:0);
+      return cb - ca;
     });
+    return moves;
+  }
 
-    // Game state
-    let board = cloneBoard(START_POS);
-    let sideToMove = 'r'; // 'r' or 'b'
-    let humanSide = 'r';
-    let selected = null; // {r,c}
-    let movesForSelected = [];
-    let history = []; // stack of {from:{r,c}, to:{r,c}, captured, prevSTM}
-    let gameOver = false;
-    let aiThinking = false;
-    let aiDepth = parseInt(depthInput.value, 10);
-
-    // Colors / styling
-    const COLORS = {
-      board: getComputedStyle(document.documentElement).getPropertyValue('--board').trim(),
-      line: getComputedStyle(document.documentElement).getPropertyValue('--board-line').trim(),
-      red: getComputedStyle(document.documentElement).getPropertyValue('--red').trim(),
-      black: getComputedStyle(document.documentElement).getPropertyValue('--black').trim(),
-      hl: getComputedStyle(document.documentElement).getPropertyValue('--green').trim(),
-      danger: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
-      ghost: 'rgba(24,160,88,0.2)',
-    };
-
-    function cloneBoard(b) {
-      return b.map(row => row.slice());
-    }
-
-    function isUpper(ch){ return ch !== EMPTY && ch === ch.toUpperCase(); }
-    function sideOf(ch){ return isUpper(ch) ? 'r' : 'b'; }
-
-    function opposite(side){ return side === 'r' ? 'b' : 'r'; }
-
-    function inside(r,c){ return r>=0 && r<10 && c>=0 && c<9; }
-
-    function inPalace(side, r, c){
-      if(side === 'r') return r>=7 && r<=9 && c>=3 && c<=5;
-      return r>=0 && r<=2 && c>=3 && c<=5;
-    }
-
-    function sameSide(a,b){
-      if(a===EMPTY || b===EMPTY) return false;
-      return sideOf(a) === sideOf(b);
-    }
-
-    // Draw board and pieces
-    function draw(){
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      ctx.clearRect(0,0,w,h);
-
-      const margin = 12;
-      const gridW = w - margin*2;
-      const cell = gridW / 8; // 9 files -> 8 intervals
-      const gridH = cell * 9;
-      const top = (h - gridH)/2;
-      const left = margin;
-
-      // Save geometry for hit-tests
-      geom.cell = cell; geom.left = left; geom.top = top;
-
-      // Board background
-      ctx.fillStyle = COLORS.board;
-      ctx.fillRect(0,0,w,h);
-
-      // Grid lines
-      ctx.strokeStyle = COLORS.line;
-      ctx.lineWidth = 1.5;
-      ctx.lineCap = 'square';
-      ctx.beginPath();
-      // Horizontal lines (10 ranks => draw 10 lines)
-      for(let r=0;r<10;r++){
-        const y = top + r*cell;
-        ctx.moveTo(left, y);
-        ctx.lineTo(left + 8*cell, y);
+  function generatePseudoMovesFor(x,y,p){
+    const out = [];
+    const add = (tx,ty)=>{ if (inBoard(tx,ty)){
+      const t = board[ty][tx];
+      if (!t || t.c !== p.c){
+        out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture: t?clonePiece(t):null});
       }
-      // Vertical lines (9 files => draw 9 columns, with river gap)
-      for(let c=0;c<9;c++){
-        const x = left + c*cell;
-        // top half
-        ctx.moveTo(x, top);
-        ctx.lineTo(x, top + 4*cell);
-        // bottom half
-        ctx.moveTo(x, top + 5*cell);
-        ctx.lineTo(x, top + 9*cell);
-      }
-      ctx.stroke();
-
-      // Palace diagonals
-      ctx.beginPath();
-      // Black palace (top)
-      ctx.moveTo(left + 3*cell, top);
-      ctx.lineTo(left + 5*cell, top + 2*cell);
-      ctx.moveTo(left + 5*cell, top);
-      ctx.lineTo(left + 3*cell, top + 2*cell);
-      // Red palace (bottom)
-      ctx.moveTo(left + 3*cell, top + 7*cell);
-      ctx.lineTo(left + 5*cell, top + 9*cell);
-      ctx.moveTo(left + 5*cell, top + 7*cell);
-      ctx.lineTo(left + 3*cell, top + 9*cell);
-      ctx.stroke();
-
-      // "River"
-      ctx.fillStyle = 'rgba(0,0,0,0.06)';
-      ctx.fillRect(left, top + 4*cell, 8*cell, cell);
-      ctx.fillStyle = '#8c6b3b';
-      ctx.font = `${Math.floor(cell*0.34)}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('楚河', left + 2*cell, top + 4.5*cell);
-      ctx.fillText('漢界', left + 6*cell, top + 4.5*cell);
-
-      // Highlights for legal moves
-      if (selected) {
-        // from square
-        drawSquareHighlight(selected.r, selected.c, COLORS.ghost);
-        for (const m of movesForSelected) {
-          drawMoveDot(m.to.r, m.to.c, board[m.to.r][m.to.c] === EMPTY ? COLORS.hl : COLORS.danger);
+    }};
+    switch(p.t){
+      case PIECES.G: {
+        const deltas = [[0,1],[0,-1],[1,0],[-1,0]];
+        for (const [dx,dy] of deltas){
+          const tx=x+dx, ty=y+dy;
+          if (inBoard(tx,ty) && palaceContains(tx,ty,p.c)) add(tx,ty);
         }
-      }
-
-      // Check highlight on side to move's general if in check
-      const kpos = findKing(board, sideToMove);
-      if (kpos && inCheck(board, sideToMove)) {
-        drawSquareRing(kpos.r, kpos.c, COLORS.danger);
-      }
-
-      // Pieces
-      for(let r=0;r<10;r++){
-        for(let c=0;c<9;c++){
-          const p = board[r][c];
-          if(p!==EMPTY) drawPiece(r,c,p);
+        // Flying general
+        // Look along the file to find opposing general with no blocking pieces
+        let ty = y + (p.c===RED ? -1 : 1);
+        let blocked = false, gSeen = false;
+        for (; ty>=0 && ty<10; ty += (p.c===RED ? -1 : 1)){
+          const t = board[ty][x];
+          if (t){
+            if (t.t === PIECES.G && t.c !== p.c && !blocked){
+              // can move to any square between? In practice, it's a direct capture move if no blockers
+              out.push({fx:x,fy:y,tx:x,ty:ty,piece:clonePiece(p), capture: clonePiece(t)});
+            }
+            blocked = true; break;
+          }
         }
+        break;
+      }
+      case PIECES.A: {
+        const deltas = [[1,1],[1,-1],[-1,1],[-1,-1]];
+        for (const [dx,dy] of deltas){
+          const tx=x+dx, ty=y+dy;
+          if (inBoard(tx,ty) && palaceContains(tx,ty,p.c)) add(tx,ty);
+        }
+        break;
+      }
+      case PIECES.E: {
+        const deltas = [[2,2],[2,-2],[-2,2],[-2,-2]];
+        for (const [dx,dy] of deltas){
+          const tx=x+dx, ty=y+dy;
+          const bx=x+dx/2, by=y+dy/2; // elephant eye
+          if (!inBoard(tx,ty)) continue;
+          if (p.c===RED && ty<5) continue; // cannot cross river
+          if (p.c===BLACK && ty>4) continue;
+          if (board[by][bx]) continue; // blocked
+          const t = board[ty][tx];
+          if (!t || t.c !== p.c) out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture: t?clonePiece(t):null});
+        }
+        break;
+      }
+      case PIECES.H: {
+        // Horse with leg rule
+        const steps = [
+          {leg:[0,-1], dst:[-1,-2]},{leg:[0,-1], dst:[1,-2]},
+          {leg:[1,0], dst:[2,-1]},{leg:[1,0], dst:[2,1]},
+          {leg:[0,1], dst:[1,2]},{leg:[0,1], dst:[-1,2]},
+          {leg:[-1,0], dst:[-2,1]},{leg:[-1,0], dst:[-2,-1]},
+        ];
+        for (const s of steps){
+          const lx=x+s.leg[0], ly=y+s.leg[1];
+          if (!inBoard(lx,ly) || board[ly][lx]) continue; // leg blocked
+          const tx=x+s.dst[0], ty=y+s.dst[1];
+          if (!inBoard(tx,ty)) continue;
+          const t=board[ty][tx];
+          if (!t || t.c !== p.c) out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture: t?clonePiece(t):null});
+        }
+        break;
+      }
+      case PIECES.R: {
+        // Rook-like sliding
+        slide(x,y,1,0,p,out); slide(x,y,-1,0,p,out);
+        slide(x,y,0,1,p,out); slide(x,y,0,-1,p,out);
+        break;
+      }
+      case PIECES.C: {
+        // Cannon: move like rook; capture requires exactly one screen
+        cannonMoves(x,y,p,out);
+        break;
+      }
+      case PIECES.S: {
+        const dir = (p.c===RED)? -1 : 1; // Red moves up (y-1), Black down (y+1)
+        const forwardY = y + dir;
+        if (inBoard(x,forwardY)) add(x,forwardY);
+        if (riverCrossed(y,p.c)){
+          // side moves
+          if (inBoard(x-1,y)) add(x-1,y);
+          if (inBoard(x+1,y)) add(x+1,y);
+        }
+        break;
       }
     }
+    return out;
+  }
 
-    function drawSquareHighlight(r,c, color){
-      const {left,top,cell} = geom;
-      ctx.fillStyle = color;
-      ctx.fillRect(left + c*cell - 2, top + r*cell - 2, cell + 4, cell + 4);
-    }
-    function drawSquareRing(r,c, color){
-      const {left,top,cell} = geom;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(left + c*cell + 3, top + r*cell + 3, cell - 6, cell - 6);
-    }
-    function drawMoveDot(r,c,color){
-      const {left,top,cell} = geom;
-      ctx.beginPath();
-      ctx.fillStyle = color;
-      // If capture, draw ring; if empty, draw solid dot
-      if(board[r][c] === EMPTY){
-        ctx.arc(left + c*cell + cell/2, top + r*cell + cell/2, Math.min(8, cell*0.12), 0, Math.PI*2);
-        ctx.fill();
+  function slide(x,y,dx,dy,p,out){
+    let tx=x+dx, ty=y+dy;
+    while(inBoard(tx,ty)){
+      const t = board[ty][tx];
+      if (!t){
+        out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture:null});
       } else {
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = color;
-        ctx.arc(left + c*cell + cell/2, top + r*cell + cell/2, Math.min(12, cell*0.2), 0, Math.PI*2);
-        ctx.stroke();
+        if (t.c !== p.c) out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture:clonePiece(t)});
+        break;
+      }
+      tx+=dx; ty+=dy;
+    }
+  }
+
+  function cannonMoves(x,y,p,out){
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (const [dx,dy] of dirs){
+      // non-capturing moves until first blocker
+      let tx=x+dx, ty=y+dy;
+      while(inBoard(tx,ty) && !board[ty][tx]){
+        out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture:null});
+        tx+=dx; ty+=dy;
+      }
+      // one screen, then capture exactly next occupied of opposite color
+      tx+=dx; ty+=dy;
+      while(inBoard(tx,ty)){
+        const t = board[ty][tx];
+        if (t){
+          if (t.c !== p.c){
+            out.push({fx:x,fy:y,tx,ty,piece:clonePiece(p), capture:clonePiece(t)});
+          }
+          break;
+        }
+        tx+=dx; ty+=dy;
+      }
+    }
+  }
+
+  // Check detection, including flying general
+  function isInCheck(color){
+    // Find general position
+    let gx=-1, gy=-1;
+    for (let y=0;y<10;y++){
+      for (let x=0;x<9;x++){
+        const p=board[y][x];
+        if (p && p.t===PIECES.G && p.c===color){ gx=x; gy=y; }
+      }
+    }
+    const opp = -color;
+
+    // 1) Rook/Chariot & Cannon & General along ranks/files
+    // Up
+    let seenScreen=false;
+    for (let y=gy-1;y>=0;y--){
+      const t=board[y][gx];
+      if (!t) continue;
+      if (!seenScreen){
+        if (t.c===opp && (t.t===PIECES.R || t.t===PIECES.G)) return true;
+        if (t) { seenScreen=true; }
+      } else {
+        if (t.c===opp && t.t===PIECES.C) return true;
+        break;
+      }
+    }
+    // Down
+    seenScreen=false;
+    for (let y=gy+1;y<10;y++){
+      const t=board[y][gx];
+      if (!t) continue;
+      if (!seenScreen){
+        if (t.c===opp && (t.t===PIECES.R || t.t===PIECES.G)) return true;
+        if (t) { seenScreen=true; }
+      } else {
+        if (t.c===opp && t.t===PIECES.C) return true;
+        break;
+      }
+    }
+    // Left
+    seenScreen=false;
+    for (let x=gx-1;x>=0;x--){
+      const t=board[gy][x];
+      if (!t) continue;
+      if (!seenScreen){
+        if (t.c===opp && t.t===PIECES.R) return true;
+        if (t) { seenScreen=true; }
+      } else {
+        if (t.c===opp && t.t===PIECES.C) return true;
+        break;
+      }
+    }
+    // Right
+    seenScreen=false;
+    for (let x=gx+1;x<9;x++){
+      const t=board[gy][x];
+      if (!t) continue;
+      if (!seenScreen){
+        if (t.c===opp && t.t===PIECES.R) return true;
+        if (t) { seenScreen=true; }
+      } else {
+        if (t.c===opp && t.t===PIECES.C) return true;
+        break;
       }
     }
 
-    function drawPiece(r,c,p){
-      const {left,top,cell} = geom;
-      const x = left + c*cell + cell/2;
-      const y = top + r*cell + cell/2;
-
-      // Piece disc
-      ctx.beginPath();
-      ctx.fillStyle = '#fffdf6';
-      ctx.strokeStyle = '#b59a78';
-      ctx.lineWidth = 3;
-      ctx.arc(x,y, cell*0.38, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Inner ring
-      ctx.beginPath();
-      ctx.strokeStyle = '#c3ad8f';
-      ctx.lineWidth = 1.5;
-      ctx.arc(x,y, cell*0.30, 0, Math.PI*2);
-      ctx.stroke();
-
-      // Text
-      const red = isUpper(p);
-      ctx.fillStyle = red ? COLORS.red : COLORS.black;
-      ctx.font = `600 ${Math.floor(cell*0.34)}px 'Noto Serif SC', 'STKaiti', 'KaiTi', serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(pieceGlyph(p), x, y + 1);
+    // 2) Horse threats (check leg)
+    const horseChecks = [
+      {leg:[0,-1], dst:[-1,-2]},{leg:[0,-1], dst:[1,-2]},
+      {leg:[1,0], dst:[2,-1]},{leg:[1,0], dst:[2,1]},
+      {leg:[0,1], dst:[1,2]},{leg:[0,1], dst:[-1,2]},
+      {leg:[-1,0], dst:[-2,1]},{leg:[-1,0], dst:[-2,-1]},
+    ];
+    for (const h of horseChecks){
+      const lx = gx + h.leg[0], ly = gy + h.leg[1];
+      const tx = gx + h.dst[0], ty = gy + h.dst[1];
+      if (!inBoard(lx,ly) || !inBoard(tx,ty)) continue;
+      if (board[ly][lx]) continue; // leg blocked
+      const t = board[ty][tx];
+      if (t && t.c===opp && t.t===PIECES.H) return true;
     }
 
-    function pieceGlyph(p){
-      switch(p.toUpperCase()){
-        case 'R': return '車';
-        case 'H': return '馬';
-        case 'E': return isUpper(p)?'相':'象';
-        case 'A': return isUpper(p)?'仕':'士';
-        case 'K': return isUpper(p)?'帥':'將';
-        case 'C': return '炮';
-        case 'S': return isUpper(p)?'兵':'卒';
+    // 3) Soldier threats
+    // Opponent soldiers move toward our general
+    const dir = (opp===RED)? -1 : 1;
+    const sy = gy + dir;
+    const candidates = [[gx,sy],[gx-1,gy],[gx+1,gy]];
+    for (const [sx,syy] of candidates){
+      if (inBoard(sx,syy)){
+        const t = board[syy][sx];
+        if (t && t.c===opp && t.t===PIECES.S){
+          // Ensure soldier would legally attack that way
+          if (syy===gy+dir || (riverCrossed(syy,opp) && (sx===gx-1 || sx===gx+1)))
+            return true;
+        }
       }
-      return '?';
     }
 
-    // Geometry cache for draw/hit
-    const geom = {left:0, top:0, cell:90};
+    // 4) Advisor/Elephant diagonal checks from adjacent diagonals (rare but cover)
+    const diag1 = [[1,1],[1,-1],[-1,1],[-1,-1]];
+    for (const [dx,dy] of diag1){
+      const tx=gx+dx, ty=gy+dy;
+      if (!inBoard(tx,ty)) continue;
+      const t=board[ty][tx];
+      if (!t || t.c!==opp) continue;
+      if (t.t===PIECES.A && palaceContains(tx,ty,opp)) return true;
+      if (t.t===PIECES.E){
+        // Elephant attacks two steps away only; General adjacent isn't attacked by Elephant by rules
+      }
+    }
+    return false;
+  }
 
-    function posFromXY(x,y){
-      const {left,top,cell} = geom;
-      const c = Math.floor((x - left)/cell);
-      const r = Math.floor((y - top)/cell);
-      if(inside(r,c)) return {r,c};
-      return null;
+  // Evaluation
+  const VAL = {
+    [PIECES.G]: 10000,
+    [PIECES.R]: 600,
+    [PIECES.C]: 350,
+    [PIECES.H]: 300,
+    [PIECES.E]: 120,
+    [PIECES.A]: 120,
+    [PIECES.S]: 70,
+  };
+  // Simple piece-square bonuses (favor center, advance soldiers)
+  function pieceSquareBonus(t, c, x, y){
+    const yRed = 9 - y; // mirror for red at bottom
+    const yy = (c===RED) ? yRed : y;
+    const center = (x===4? 8 : (x===3||x===5?4:0));
+    switch(t){
+      case PIECES.S:
+        return (riverCrossed( (c===RED? y : yRed), c) ? 50 : 0) + yy*2 + center;
+      case PIECES.H:
+        return center + 4;
+      case PIECES.C:
+        return center + 6;
+      case PIECES.R:
+        return center + 10;
+      case PIECES.E:
+        return palaceContains(x, y, c) ? 6 : 0;
+      case PIECES.A:
+        return palaceContains(x, y, c) ? 8 : -5;
+      case PIECES.G:
+        return 0;
+      default: return 0;
+    }
+  }
+
+  function evaluate(){
+    // Positive is good for sideToMove (negamax-friendly after perspective switch in search)
+    let scoreRed = 0, scoreBlack = 0;
+    for (let y=0;y<10;y++){
+      for (let x=0;x<9;x++){
+        const p = board[y][x];
+        if (!p) continue;
+        const base = VAL[p.t];
+        const pst = pieceSquareBonus(p.t, p.c, x, y);
+        if (p.c===RED) scoreRed += base + pst;
+        else scoreBlack += base + pst;
+      }
+    }
+    // King safety: penalize if in check
+    if (isInCheck(RED)) scoreRed -= 20;
+    if (isInCheck(BLACK)) scoreBlack -= 20;
+
+    const evalScore = scoreRed - scoreBlack;
+    // Return from perspective of side to move
+    return (sideToMove===RED) ? evalScore : -evalScore;
+  }
+
+  // Search: iterative deepening alpha-beta (negamax)
+  function searchRoot(timeMs){
+    const start = performance.now();
+    let best = null;
+    let bestScore = -Infinity;
+    let depth = 1;
+    let nodes = 0;
+    const deadline = start + timeMs;
+
+    const rootMoves = generateLegalMoves(sideToMove);
+    if (rootMoves.length===0){
+      return { move: null, score: isInCheck(sideToMove) ? -999999 : 0, depth: 0, nodes: 0 };
     }
 
-    // Input handling
-    canvas.addEventListener('mousedown', onPointerDown);
-    canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); onPointerDown(e.touches[0]); }, {passive:false});
+    // Move ordering: quick heuristic captures first already applied in generation
+    // Killer moves storage
+    const killers = Array.from({length:32},()=>({a:null,b:null}));
 
-    function onPointerDown(e){
-      if (gameOver || aiThinking) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left);
-      const y = (e.clientY - rect.top);
-      const pos = posFromXY(x,y);
-      if(!pos) return;
+    while (performance.now() < deadline - 8) {
+      let thisBest = null;
+      let thisBestScore = -Infinity;
 
-      const p = board[pos.r][pos.c];
-      const myTurn = sideToMove === humanSide;
+      for (let i=0;i<rootMoves.length;i++){
+        const m = rootMoves[i];
+        const cap = makeMove(m);
+        const score = -alphaBeta(depth-1, -999999, 999999, deadline, killers, 1);
+        undoMove(m,cap);
+        nodes++;
 
-      // If selecting/deselecting
-      if(selected && selected.r === pos.r && selected.c === pos.c){
-        clearSelection();
-        draw(); return;
+        // PV move to front
+        if (score > thisBestScore){
+          thisBestScore = score;
+          thisBest = m;
+          // reorder
+          rootMoves.splice(i,1);
+          rootMoves.unshift(m);
+        }
+        if (performance.now() > deadline - 2) break;
       }
 
-      if(selected){
-        // Try move if legal
-        const legal = movesForSelected.find(m => m.to.r === pos.r && m.to.c === pos.c);
-        if(legal && myTurn){
-          makeMove(legal);
-          clearSelection();
-          draw();
-          afterHumanMove();
+      if (thisBest){
+        best = thisBest;
+        bestScore = thisBestScore;
+      } else {
+        break;
+      }
+      depth++;
+      if (depth>12) break; // practical cap for mobile
+    }
+    return { move: best, score: bestScore, depth: depth-1, nodes };
+  }
+
+  function alphaBeta(depth, alpha, beta, deadline, killers, ply){
+    if (performance.now() > deadline) {
+      // Quiescence-like stand-pat to avoid blunders if time’s up
+      return evaluate();
+    }
+    if (depth===0) {
+      return quiescence(alpha, beta, deadline);
+    }
+    const tt = TT.get(hash);
+    if (tt && tt.depth >= depth){
+      if (tt.flag === 0) return tt.score;
+      if (tt.flag === -1 && tt.score <= alpha) return alpha;
+      if (tt.flag === 1 && tt.score >= beta) return beta;
+    }
+
+    let bestScore = -999999;
+    let bestMove = null;
+
+    let moves = generateLegalMoves(sideToMove);
+
+    // Move ordering: try TT move, then captures, then killers
+    if (tt && tt.move){
+      const idx = moves.findIndex(m => sameMove(m, tt.move));
+      if (idx>=0){ const mv = moves.splice(idx,1)[0]; moves.unshift(mv); }
+    }
+    const k = killers[ply]||{};
+    for (const km of [k.a,k.b]){
+      if (!km) continue;
+      const idx = moves.findIndex(m => sameMove(m, km));
+      if (idx>0){ const mv = moves.splice(idx,1)[0]; moves.splice(1,0,mv); }
+    }
+
+    for (const m of moves){
+      const cap = makeMove(m);
+      const score = -alphaBeta(depth-1, -beta, -alpha, deadline, killers, ply+1);
+      undoMove(m, cap);
+      if (score > bestScore){ bestScore = score; bestMove = m; }
+      if (bestScore > alpha){
+        alpha = bestScore;
+      }
+      if (alpha >= beta){
+        // store killer
+        if (!m.capture){
+          const kk = killers[ply]||{a:null,b:null};
+          if (!kk.a || !sameMove(kk.a,m)) { kk.b = kk.a; kk.a = m; killers[ply] = kk; }
+        }
+        break;
+      }
+      if (performance.now() > deadline) break;
+    }
+
+    // store TT
+    let flag = 0;
+    if (bestScore <= alpha) flag = -1;
+    else if (bestScore >= beta) flag = 1;
+    TT.set(hash, {depth, score: bestScore, flag, move: bestMove});
+    return bestScore;
+  }
+
+  function sameMove(a,b){
+    return a && b && a.fx===b.fx && a.fy===b.fy && a.tx===b.tx && a.ty===b.ty && a.piece.t===b.piece.t && a.piece.c===b.piece.c;
+  }
+
+  // Quiescence search: only consider captures to stabilize evaluation
+  function quiescence(alpha, beta, deadline){
+    const stand = evaluate();
+    if (stand >= beta) return beta;
+    if (alpha < stand) alpha = stand;
+
+    const caps = [];
+    for (let y=0;y<10;y++){
+      for (let x=0;x<9;x++){
+        const p=board[y][x];
+        if (!p || p.c!==sideToMove) continue;
+        const moves = generatePseudoMovesFor(x,y,p);
+        for (const m of moves){
+          if (m.capture){
+            const cap = makeMove(m);
+            const legal = !isInCheck(toggleSide(sideToMove)); // after makeMove, sideToMove toggled
+            undoMove(m,cap);
+            if (legal) caps.push(m);
+          }
+        }
+      }
+    }
+    // Simple MVV-LVA ordering: higher captured value first
+    caps.sort((a,b)=> (VAL[b.capture?.t||'S']||0) - (VAL[a.capture?.t||'S']||0));
+
+    for (const m of caps){
+      if (performance.now() > deadline) break;
+      const cap = makeMove(m);
+      const score = -quiescence(-beta, -alpha, deadline);
+      undoMove(m, cap);
+      if (score >= beta) return beta;
+      if (score > alpha) alpha = score;
+    }
+    return alpha;
+  }
+
+  // Rendering
+  let svg = null, gGrid=null, gHints=null, gPieces=null, gOverlay=null, gCoords=null;
+  function initSVG(){
+    svg = svgEl('svg', { viewBox:`0 0 ${VB_W} ${VB_H}`, role:'img', 'aria-label':'Xiangqi board' });
+    elWrap.innerHTML = '';
+    elWrap.appendChild(svg);
+
+    gGrid = svgEl('g', {});
+    gHints = svgEl('g', {});
+    gPieces = svgEl('g', {});
+    gOverlay = svgEl('g', {});
+    gCoords = svgEl('g', {});
+    svg.appendChild(gGrid);
+    svg.appendChild(gHints);
+    svg.appendChild(gPieces);
+    svg.appendChild(gOverlay);
+    svg.appendChild(gCoords);
+
+    drawGrid();
+    drawRiverText();
+    drawCoords();
+    drawAllPieces();
+    updateStatus();
+  }
+
+  function svgEl(tag, attrs, children=[]){
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k,v] of Object.entries(attrs||{})){
+      e.setAttribute(k,String(v));
+    }
+    for (const ch of children) e.appendChild(ch);
+    return e;
+  }
+  function cellToXY(x,y){
+    // Map board cells to viewBox coords
+    const gx = BOARD_X0 + x*CELL;
+    const gy = BOARD_Y0 + y*CELL;
+    return [gx, gy];
+  }
+
+  function drawGrid(){
+    gGrid.innerHTML = '';
+    // Outer border
+    gGrid.appendChild(svgEl('rect', {x:BOARD_X0, y:BOARD_Y0, width: (9-1)*CELL, height:(10-1)*CELL, fill:'none', class:'grid-line'}));
+    // Horizontal lines
+    for (let r=0;r<10;r++){
+      const [x0,y] = cellToXY(0,r);
+      const [x8,_] = cellToXY(8,r);
+      if (r===4 || r===5){
+        // split at river
+        gGrid.appendChild(svgEl('line', {x1:x0,y1:y,x2:x0+(4*CELL),y2:y, class:'grid-line'}));
+        gGrid.appendChild(svgEl('line', {x1:x0+(5*CELL),y1:y,x2:x8,y2:y, class:'grid-line'}));
+      } else {
+        gGrid.appendChild(svgEl('line', {x1:x0,y1:y,x2:x8,y2:y, class:'grid-line'}));
+      }
+    }
+    // Vertical lines
+    for (let c=0;c<9;c++){
+      const [x,y0] = cellToXY(c,0);
+      const [_,y9] = cellToXY(c,9);
+      gGrid.appendChild(svgEl('line', {x1:x,y1:y0,x2:x,y2:y9, class:'grid-line'}));
+    }
+    // Palaces X
+    const palace = (y0) => {
+      const [x3,yA] = cellToXY(3,y0);
+      const [x5,yB] = cellToXY(5,y0+2);
+      const [x5b,yA2] = cellToXY(5,y0);
+      const [x3b,yB2] = cellToXY(3,y0+2);
+      gGrid.appendChild(svgEl('line', {x1:x3,y1:yA,x2:x5,y2:yB,class:'grid-line'}));
+      gGrid.appendChild(svgEl('line', {x1:x5b,y1:yA,x2:x3b,y2:yB2,class:'grid-line'}));
+    };
+    palace(0); palace(7);
+  }
+
+  function drawRiverText(){
+    const [x0,y4] = cellToXY(0,4);
+    const [x8,y5] = cellToXY(8,5);
+    const midX = (x0 + x8) / 2;
+    const midY = (y4 + y5) / 2;
+    const text = svgEl('text', {x: midX, y: midY, class:'river-text'});
+    text.textContent = '楚河    漢界';
+    text.setAttribute('text-anchor','middle');
+    gGrid.appendChild(text);
+  }
+
+  function drawCoords(){
+    gCoords.innerHTML = '';
+    for (let x=0;x<9;x++){
+      const [gx,gyTop] = cellToXY(x,0);
+      const [_,gyBot] = cellToXY(x,9);
+      const tTop = svgEl('text', {x: gx, y: gyTop - 2.2, class:'coords'});
+      tTop.textContent = String.fromCharCode(65+x); // A..I
+      tTop.setAttribute('text-anchor','middle');
+      const tBot = svgEl('text', {x: gx, y: gyBot + 2.8, class:'coords'});
+      tBot.textContent = (x+1);
+      tBot.setAttribute('text-anchor','middle');
+      gCoords.appendChild(tTop);
+      gCoords.appendChild(tBot);
+    }
+  }
+
+  function drawAllPieces(){
+    gPieces.innerHTML = '';
+    gHints.innerHTML = '';
+    for (let y=0;y<10;y++){
+      for (let x=0;x<9;x++){
+        const p = board[y][x];
+        if (!p) continue;
+        drawPiece(x,y,p);
+      }
+    }
+    if (selected) drawSelectionAndHints();
+  }
+
+  function drawPiece(x,y,p){
+    const [gx,gy] = cellToXY(x,y);
+    const g = svgEl('g', {class:`piece ${p.c===RED?'p-red':'p-black'}`, 'data-x':x, 'data-y':y});
+    const r = 4.2;
+    g.appendChild(svgEl('circle', {cx:gx, cy:gy, r, class:'p-circle'}));
+    const t = svgEl('text', {x:gx, y:gy+0.3, class:'p-label'});
+    t.textContent = LABELS[p.t][p.c];
+    g.appendChild(t);
+    g.addEventListener('click', onCellClickFromPiece);
+    g.addEventListener('touchstart', onCellClickFromPiece, {passive:true});
+    gPieces.appendChild(g);
+  }
+
+  function drawSelectionAndHints(){
+    gHints.innerHTML = '';
+    const {x,y} = selected;
+    const [gx,gy] = cellToXY(x,y);
+    gHints.appendChild(svgEl('rect', {x:gx-4.6, y:gy-4.6, width:9.2, height:9.2, rx:1.2, ry:1.2, class:'sel'}));
+    for (const m of legalMovesFromSel){
+      const [hx,hy] = cellToXY(m.tx,m.ty);
+      gHints.appendChild(svgEl('circle', {cx:hx, cy:hy, r:1.4, class:'hint'}));
+    }
+  }
+
+  function onCellClickFromPiece(e){
+    const g = e.currentTarget;
+    const x = parseInt(g.getAttribute('data-x'),10);
+    const y = parseInt(g.getAttribute('data-y'),10);
+    onCellClick(x,y);
+  }
+
+  // Background click to move to empty square
+  svgClickSetup();
+  function svgClickSetup(){
+    elWrap.addEventListener('click', (e)=>{
+      const pt = pointToCell(e);
+      if (!pt) return;
+      onCellClick(pt.x, pt.y);
+    });
+    elWrap.addEventListener('touchstart', (e)=>{
+      const touch = e.touches[0];
+      const pt = pointToCell(touch);
+      if (!pt) return;
+      onCellClick(pt.x, pt.y);
+    }, {passive:true});
+  }
+  function pointToCell(evt){
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    const px = ((evt.clientX - rect.left)/rect.width) * VB_W;
+    const py = ((evt.clientY - rect.top)/rect.height) * VB_H;
+    // snap to nearest cell center
+    const x = Math.round((px - BOARD_X0)/CELL);
+    const y = Math.round((py - BOARD_Y0)/CELL);
+    if (!inBoard(x,y)) return null;
+    return {x,y};
+  }
+
+  function onCellClick(x,y){
+    if (gameOver || searching) return;
+    const p = board[y][x];
+    const myTurn = sideToMove === humanSide;
+    // If no selection: must select own piece
+    if (!selected){
+      if (!myTurn) return;
+      if (!p || p.c !== humanSide) return;
+      selected = {x,y};
+      legalMovesFromSel = legalMovesFrom(x,y);
+      drawAllPieces();
+      return;
+    }
+    // If selecting same color piece, reselect
+    if (p && p.c === humanSide){
+      selected = {x,y};
+      legalMovesFromSel = legalMovesFrom(x,y);
+      drawAllPieces();
+      return;
+    }
+    // Attempt move if legal
+    const mv = legalMovesFromSel.find(m => m.tx===x && m.ty===y);
+    if (mv){
+      moveAndAdvance(mv);
+    } else {
+      // click empty illegal -> clear selection
+      selected = null;
+      legalMovesFromSel = [];
+      drawAllPieces();
+    }
+  }
+
+  function legalMovesFrom(x,y){
+    const p = board[y][x];
+    if (!p) return [];
+    const all = generateLegalMoves(p.c);
+    return all.filter(m => m.fx===x && m.fy===y);
+  }
+
+  function moveAndAdvance(mv){
+    if (gameOver) return;
+    // Make move
+    const cap = makeMove(mv);
+    history.push({move: mv, captured: cap});
+    selected = null;
+    legalMovesFromSel = [];
+    drawAllPieces();
+
+    // Check game end
+    const opp = sideToMove;
+    const oppMoves = generateLegalMoves(opp);
+    if (oppMoves.length===0){
+      const mate = isInCheck(opp);
+      gameOver = true;
+      updateStatus(mate ? (humanSide===opp ? 'You are checkmated.' : 'You delivered checkmate!') : 'Stalemate.');
+      return;
+    }
+
+    updateStatus();
+    // If AI turn, think
+    if (sideToMove !== humanSide){
+      searching = true;
+      updateStatus('AI is thinking...');
+      setTimeout(()=> {
+        const res = searchRoot(aiTimeMs);
+        searching = false;
+        if (!res.move){
+          gameOver = true;
+          updateStatus('Game over.');
           return;
         }
-      }
-
-      // New selection
-      if(p !== EMPTY && sideOf(p) === humanSide && myTurn){
-        selected = pos;
-        movesForSelected = generateLegalMovesForSquare(board, pos.r, pos.c, sideToMove);
-        draw();
-      } else {
-        clearSelection();
-        draw();
-      }
-    }
-
-    function clearSelection(){
-      selected = null;
-      movesForSelected = [];
-    }
-
-    // Move representation: {from:{r,c}, to:{r,c}, piece, captured}
-    function makeMove(m){
-      history.push({from:m.from, to:m.to, captured:m.captured, piece:m.piece, prevSTM: sideToMove});
-      board[m.to.r][m.to.c] = m.piece;
-      board[m.from.r][m.from.c] = EMPTY;
-      sideToMove = opposite(sideToMove);
-      updateStatus();
-    }
-
-    function unmakeMove(){
-      const h = history.pop();
-      if(!h) return;
-      board[h.from.r][h.from.c] = h.piece;
-      board[h.to.r][h.to.c] = h.captured || EMPTY;
-      sideToMove = h.prevSTM;
-      updateStatus();
-    }
-
-    undoBtn.addEventListener('click', ()=>{
-      if (aiThinking) return;
-      // Undo human + AI moves (if available)
-      unmakeMove();
-      if (sideToMove !== humanSide) unmakeMove();
-      gameOver = false;
-      clearSelection();
-      draw();
-    });
-
-    newBtn.addEventListener('click', ()=>{
-      resetGame();
-    });
-
-    sideSel.addEventListener('change', ()=>{
-      humanSide = sideSel.value;
-      resetGame();
-    });
-
-    depthInput.addEventListener('input', ()=>{
-      aiDepth = parseInt(depthInput.value, 10);
-      depthLabel.textContent = aiDepth;
-    });
-
-    function resetGame(){
-      board = cloneBoard(START_POS);
-      sideToMove = 'r';
-      clearSelection();
-      history = [];
-      gameOver = false;
-      aiThinking = false;
-      updateStatus();
-      draw();
-      // If AI is Red and moves first
-      if (humanSide === 'b') {
-        aiMoveSoon();
-      }
-    }
-
-    function updateStatus(){
-      if(gameOver){
-        statusEl.textContent = winnerText || 'Game over.';
-        return;
-      }
-      const stm = sideToMove === 'r' ? 'Red' : 'Black';
-      const you = humanSide === sideToMove ? 'Your move.' : 'Computer is thinking...';
-      statusEl.textContent = `${stm} to move. ${you}`;
-    }
-
-    function afterHumanMove(){
-      // Check end
-      if (isCheckmate(board, sideToMove)) {
-        gameOver = true;
-        winnerText = humanSide === opposite(sideToMove) ? 'You win by checkmate!' : 'Checkmate. You lose.';
-        updateStatus(); draw(); return;
-      }
-      if (isStalemate(board, sideToMove)) {
-        gameOver = true; winnerText = 'Stalemate.'; updateStatus(); draw(); return;
-      }
-      aiMoveSoon();
-    }
-
-    function aiMoveSoon(){
-      if (gameOver) return;
-      aiThinking = true;
-      updateStatus();
-      // Allow UI to update
-      setTimeout(()=>{
-        const m = findBestMove(board, sideToMove, aiDepth);
-        if (m) {
-          makeMove(m);
-          draw();
-          // End checks
-          if (isCheckmate(board, sideToMove)) {
-            gameOver = true;
-            winnerText = humanSide === opposite(sideToMove) ? 'Computer wins by checkmate.' : 'You win by checkmate!';
-          } else if (isStalemate(board, sideToMove)) {
-            gameOver = true;
-            winnerText = 'Stalemate.';
-          } else {
-            winnerText = '';
-          }
-        } else {
+        const cap2 = makeMove(res.move);
+        history.push({move: res.move, captured: cap2});
+        drawAllPieces();
+        // Check end again
+        const humanMoves = generateLegalMoves(humanSide);
+        if (humanMoves.length===0){
+          const mate = isInCheck(humanSide);
           gameOver = true;
-          winnerText = 'No legal moves.';
+          updateStatus(mate ? 'Checkmated. Good game.' : 'Stalemate.');
+          return;
         }
-        aiThinking = false;
         updateStatus();
-        draw();
-      }, 50);
+      }, 20);
     }
+  }
 
-    let winnerText = '';
-
-    // Move generation
-    function generateLegalMoves(board, side){
-      const moves = [];
-      for(let r=0;r<10;r++){
-        for(let c=0;c<9;c++){
-          const p = board[r][c];
-          if(p===EMPTY) continue;
-          if(sideOf(p) !== side) continue;
-          const pseudo = generatePseudoMoves(board, r, c);
-          for(const m of pseudo){
-            if (isLegalMove(board, m, side)) moves.push(m);
-          }
-        }
-      }
-      return moves;
+  function updateStatus(text){
+    if (text){
+      elStatus.textContent = text;
+      return;
     }
-
-    function generateLegalMovesForSquare(board, r, c, side){
-      const p = board[r][c];
-      if(p===EMPTY || sideOf(p)!==side) return [];
-      const pseudo = generatePseudoMoves(board, r, c);
-      return pseudo.filter(m => isLegalMove(board, m, side));
+    if (gameOver) return;
+    const stm = sideToMove===RED ? 'Red' : 'Black';
+    const you = humanSide===RED ? 'Red' : 'Black';
+    const check = isInCheck(sideToMove) ? ' (in check)' : '';
+    if (sideToMove === humanSide){
+      elStatus.textContent = `Your move as ${you}${check}.`;
+    } else {
+      elStatus.textContent = `AI to move as ${stm}${check}.`;
     }
+  }
 
-    function isLegalMove(board, m, side){
-      // Apply, test for check (own king must not be in check), also enforce flying general rule
-      applyTemp(board, m);
-      const ok = !inCheck(board, side);
-      undoTemp(board, m);
-      return ok;
+  // Controls
+  newBtn.addEventListener('click', ()=>{
+    board = startPosition();
+    sideToMove = RED;
+    history = [];
+    gameOver = false;
+    selected = null;
+    legalMovesFromSel = [];
+    TT.clear();
+    hash = computeHash(board, sideToMove);
+    drawAllPieces();
+    updateStatus(`Your move as ${humanSide===RED?'Red':'Black'}.`);
+    // If AI is to move immediately
+    if (sideToMove !== humanSide){
+      setTimeout(()=> onCellClick(-1,-1), 10);
+      if (!searching){
+        searching = true; updateStatus('AI is thinking...');
+        setTimeout(()=> {
+          const res = searchRoot(aiTimeMs);
+          searching = false;
+          if (res.move){
+            const cap2 = makeMove(res.move);
+            history.push({move: res.move, captured: cap2});
+            drawAllPieces(); updateStatus();
+          }
+        }, 10);
+      }
     }
+  });
 
-    function generatePseudoMoves(board, r, c){
-      const p = board[r][c];
-      if (p===EMPTY) return [];
-      const side = sideOf(p);
-      const res = [];
-      const add = (tr,tc)=>{
-        if(!inside(tr,tc)) return false;
-        const t = board[tr][tc];
-        if (t===EMPTY || sideOf(t)!==side) {
-          res.push({from:{r,c}, to:{r:tr,c:tc}, piece:p, captured: t===EMPTY?null:t});
-          return t===EMPTY; // continue only if empty (for sliders)
+  switchBtn.addEventListener('click', ()=>{
+    if (searching) return;
+    humanSide = toggleSide(humanSide);
+    updateStatus(`You now play ${humanSide===RED?'Red':'Black'}.`);
+    drawAllPieces();
+    if (sideToMove !== humanSide && !gameOver){
+      searching = true; updateStatus('AI is thinking...');
+      setTimeout(()=> {
+        const res = searchRoot(aiTimeMs);
+        searching = false;
+        if (res.move){
+          const cap2 = makeMove(res.move);
+          history.push({move: res.move, captured: cap2});
         }
-        return false;
-      };
-
-      const forward = (side==='r') ? -1 : 1;
-
-      switch(p.toUpperCase()){
-        case 'K': {
-          // orthogonal 1 within palace + flying general capture
-          const cand = [[1,0],[-1,0],[0,1],[0,-1]];
-          for(const [dr,dc] of cand){
-            const tr = r+dr, tc = c+dc;
-            if (inside(tr,tc) && inPalace(side,tr,tc)) add(tr,tc);
-          }
-          // flying general capture: along file if no piece in between
-          const oppK = findKing(board, opposite(side));
-          if(oppK && c===oppK.c){
-            let blocked = false;
-            const step = (oppK.r > r) ? 1 : -1;
-            for(let rr = r+step; rr !== oppK.r; rr += step){
-              if(board[rr][c] !== EMPTY){ blocked = true; break; }
-            }
-            if(!blocked){
-              // Can "capture" opposing general if move lands there (but in Xiangqi, generals cannot move off palace; here we model it via capture only if adjacent? Simplify: allow only if one step move places on general square while path clear).
-              const tr = r + step;
-              if (tr === oppK.r && inPalace(side,tr,c)) add(tr,c);
-            }
-          }
-          break;
-        }
-        case 'A': {
-          // diagonals 1 within palace
-          const cand = [[1,1],[1,-1],[-1,1],[-1,-1]];
-          for(const [dr,dc] of cand){
-            const tr = r+dr, tc = c+dc;
-            if(inside(tr,tc) && inPalace(side,tr,tc)) add(tr,tc);
-          }
-          break;
-        }
-        case 'E': {
-          // diagonals 2, cannot cross river, elephant eye must be empty
-          const cand = [[2,2],[2,-2],[-2,2],[-2,-2]];
-          for(const [dr,dc] of cand){
-            const tr = r+dr, tc = c+dc;
-            const mr = r+dr/2, mc = c+dc/2;
-            if(!inside(tr,tc)) continue;
-            // river: Red elephants must stay r>=5, Black elephants r<=4
-            if (side==='r' ? (tr<5) : (tr>4)) continue;
-            if(board[mr][mc]!==EMPTY) continue; // elephant eye
-            add(tr,tc);
-          }
-          break;
-        }
-        case 'H': {
-          // horse: 1 orth then 1 diag; horse leg must be empty
-          const steps = [
-            {to:[-2,-1], block:[-1,0]},
-            {to:[-2, 1], block:[-1,0]},
-            {to:[ 2,-1], block:[ 1,0]},
-            {to:[ 2, 1], block:[ 1,0]},
-            {to:[-1,-2], block:[0,-1]},
-            {to:[ 1,-2], block:[0,-1]},
-            {to:[-1, 2], block:[0, 1]},
-            {to:[ 1, 2], block:[0, 1]},
-          ];
-          for(const s of steps){
-            const tr = r + s.to[0], tc = c + s.to[1];
-            const br = r + s.block[0], bc = c + s.block[1];
-            if(!inside(tr,tc) || !inside(br,bc)) continue;
-            if(board[br][bc] !== EMPTY) continue; // blocked leg
-            add(tr,tc);
-          }
-          break;
-        }
-        case 'R': {
-          // rook: orthogonal sliders
-          // up
-          for(let tr=r-1; tr>=0; tr--){
-            if(!add(tr,c)) break;
-          }
-          // down
-          for(let tr=r+1; tr<10; tr++){
-            if(!add(tr,c)) break;
-          }
-          // left
-          for(let tc=c-1; tc>=0; tc--){
-            if(!add(r,tc)) break;
-          }
-          // right
-          for(let tc=c+1; tc<9; tc++){
-            if(!add(r,tc)) break;
-          }
-          break;
-        }
-        case 'C': {
-          // cannon: moves like rook without capture; to capture must jump exactly one screen
-          // For each direction: first push non-captures until a piece, then look for first piece beyond to capture
-          const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-          for(const [dr,dc] of dirs){
-            let tr = r + dr, tc = c + dc;
-            // Non-captures
-            while(inside(tr,tc) && board[tr][tc]===EMPTY){
-              res.push({from:{r,c}, to:{r:tr,c:tc}, piece:p, captured:null});
-              tr += dr; tc += dc;
-            }
-            // Now find one screen
-            while(inside(tr,tc) && board[tr][tc]===EMPTY){
-              tr += dr; tc += dc;
-            }
-            if(inside(tr,tc) && board[tr][tc]!==EMPTY){
-              // found screen at tr,tc; now next non-empty to capture
-              tr += dr; tc += dc;
-              while(inside(tr,tc) && board[tr][tc]===EMPTY){
-                tr += dr; tc += dc;
-              }
-              if(inside(tr,tc) && board[tr][tc]!==EMPTY && sideOf(board[tr][tc])!==side){
-                res.push({from:{r,c}, to:{r:tr,c:tc}, piece:p, captured:board[tr][tc]});
-              }
-            }
-          }
-          break;
-        }
-        case 'S': {
-          // soldier: forward 1; after crossing river also left/right; never backward
-          const tr = r + forward, tc = c;
-          if(inside(tr,tc)) add(tr,tc);
-          const crossed = side==='r' ? (r<=4) : (r>=5);
-          if(crossed){
-            if(inside(r, c-1)) add(r, c-1);
-            if(inside(r, c+1)) add(r, c+1);
-          }
-          break;
-        }
-      }
-      // Filter out illegal "flying general" exposures: already covered in isLegalMove via inCheck
-      return res;
+        drawAllPieces();
+        updateStatus();
+      }, 25);
     }
+  });
 
-    function applyTemp(board, m){
-      board[m.to.r][m.to.c] = m.piece;
-      board[m.from.r][m.from.c] = EMPTY;
+  undoBtn.addEventListener('click', ()=>{
+    if (searching || history.length===0) return;
+    // Undo one ply (AI) if AI moved last, else undo one ply (human)
+    const last = history.pop();
+    undoMove(last.move, last.captured);
+    // If now it's opponent's move relative to human, undo one more to return to human to move
+    if (sideToMove !== humanSide && history.length>0){
+      const last2 = history.pop();
+      undoMove(last2.move, last2.captured);
     }
-    function undoTemp(board, m){
-      board[m.from.r][m.from.c] = m.piece;
-      board[m.to.r][m.to.c] = m.captured || EMPTY;
-    }
+    gameOver = false;
+    selected = null; legalMovesFromSel = [];
+    drawAllPieces();
+    updateStatus();
+  });
 
-    function findKing(board, side){
-      const target = side==='r' ? 'K' : 'k';
-      for(let r=0;r<10;r++){
-        for(let c=0;c<9;c++){
-          if(board[r][c]===target) return {r,c};
-        }
-      }
-      return null;
-    }
+  timeRange.addEventListener('input', ()=>{
+    aiTimeMs = parseInt(timeRange.value,10);
+    timeLabel.textContent = `${(aiTimeMs/1000).toFixed(1)}s/move`;
+  });
 
-    function inCheck(board, side){
-      const k = findKing(board, side);
-      if(!k) return false; // should not happen
-      const r = k.r, c = k.c;
-      const opp = opposite(side);
+  // Initialize
+  initSVG();
 
-      // 1) Soldiers
-      const fwd = (opp==='r') ? -1 : 1;
-      const soldierThreats = [
-        {r:r+fwd, c:c}, // soldier forward towards our king
-        {r:r, c:c-1},
-        {r:r, c:c+1},
-      ];
-      for(const s of soldierThreats){
-        if(inside(s.r,s.c)){
-          const p = board[s.r][s.c];
-          if(p!==EMPTY && sideOf(p)===opp && p.toUpperCase()==='S'){
-            // Sideways only if that soldier has crossed river
-            if (s.r !== r) return true; // forward attack is always allowed
-            // sideways: ensure attacker crossed river (relative to its side)
-            const crossed = (opp==='r') ? (s.r<=4) : (s.r>=5);
-            if (crossed) return true;
-          }
-        }
-      }
-
-      // 2) Horses (with leg rule)
-      const horseSteps = [
-        {to:[-2,-1], block:[-1,0]},
-        {to:[-2, 1], block:[-1,0]},
-        {to:[ 2,-1], block:[ 1,0]},
-        {to:[ 2, 1], block:[ 1,0]},
-        {to:[-1,-2], block:[0,-1]},
-        {to:[ 1,-2], block:[0,-1]},
-        {to:[-1, 2], block:[0, 1]},
-        {to:[ 1, 2], block:[0, 1]},
-      ];
-      for(const s of horseSteps){
-        const sr = r - s.to[0], sc = c - s.to[1]; // attacker position
-        const br = sr + s.block[0], bc = sc + s.block[1];
-        if(inside(sr,sc) && inside(br,bc)){
-          const p = board[sr][sc];
-          if(p!==EMPTY && sideOf(p)===opp && p.toUpperCase()==='H'){
-            if(board[br][bc]===EMPTY) return true;
-          }
-        }
-      }
-
-      // 3) Rooks and Generals along ranks/files (no blockers)
-      // Up
-      for(let tr=r-1; tr>=0; tr--){
-        const p = board[tr][c];
-        if(p===EMPTY) continue;
-        if(sideOf(p)===opp){
-          const upc = p.toUpperCase();
-          if(upc==='R') return true;
-          // Flying general
-          if(upc==='K'){
-            // ensure no blockers: we already hit it first so ok
-            return true;
-          }
-          break;
-        } else break;
-      }
-      // Down
-      for(let tr=r+1; tr<10; tr++){
-        const p = board[tr][c];
-        if(p===EMPTY) continue;
-        if(sideOf(p)===opp){
-          const upc = p.toUpperCase();
-          if(upc==='R') return true;
-          if(upc==='K') return true;
-          break;
-        } else break;
-      }
-      // Left
-      for(let tc=c-1; tc>=0; tc--){
-        const p = board[r][tc];
-        if(p===EMPTY) continue;
-        if(sideOf(p)===opp){
-          const upc = p.toUpperCase();
-          if(upc==='R') return true;
-          break;
-        } else break;
-      }
-      // Right
-      for(let tc=c+1; tc<9; tc++){
-        const p = board[r][tc];
-        if(p===EMPTY) continue;
-        if(sideOf(p)===opp){
-          const upc = p.toUpperCase();
-          if(upc==='R') return true;
-          break;
-        } else break;
-      }
-
-      // 4) Cannons (need one screen to capture)
-      // Up
-      {
-        let tr = r-1; let screen = false;
-        for(; tr>=0; tr--){
-          const p = board[tr][c];
-          if(p===EMPTY) continue;
-          if(!screen){ screen = true; continue; }
-          // after screen, first piece must be enemy to capture
-          if(sideOf(p)===opp && p.toUpperCase()==='C') return true;
-          break;
-        }
-      }
-      // Down
-      {
-        let tr = r+1; let screen = false;
-        for(; tr<10; tr++){
-          const p = board[tr][c];
-          if(p===EMPTY) continue;
-          if(!screen){ screen = true; continue; }
-          if(sideOf(p)===opp && p.toUpperCase()==='C') return true;
-          break;
-        }
-      }
-      // Left
-      {
-        let tc = c-1; let screen = false;
-        for(; tc>=0; tc--){
-          const p = board[r][tc];
-          if(p===EMPTY) continue;
-          if(!screen){ screen = true; continue; }
-          if(sideOf(p)===opp && p.toUpperCase()==='C') return true;
-          break;
-        }
-      }
-      // Right
-      {
-        let tc = c+1; let screen = false;
-        for(; tc<9; tc++){
-          const p = board[r][tc];
-          if(p===EMPTY) continue;
-          if(!screen){ screen = true; continue; }
-          if(sideOf(p)===opp && p.toUpperCase()==='C') return true;
-          break;
-        }
-      }
-
-      // 5) Advisors and Elephants (rare but include)
-      const diag1 = [[1,1],[1,-1],[-1,1],[-1,-1]];
-      for(const [dr,dc] of diag1){
-        const sr = r+dr, sc = c+dc;
-        if(inside(sr,sc)){
-          const p = board[sr][sc];
-          if(p!==EMPTY && sideOf(p)===opp && p.toUpperCase()==='A'){
-            // Advisors confined to palace; if it's there, it can attack diagonally 1
-            return true;
-          }
-        }
-      }
-      const diag2 = [[2,2],[2,-2],[-2,2],[-2,-2]];
-      for(const [dr,dc] of diag2){
-        const sr = r+dr, sc = c+dc;
-        const mr = r+dr/2, mc = c+dc/2;
-        if(inside(sr,sc) && inside(mr,mc)){
-          const p = board[sr][sc];
-          if(p!==EMPTY && sideOf(p)===opp && p.toUpperCase()==='E'){
-            // Elephant eye must be empty and attacker must be on its own side of river;
-            const onOwnSide = (sideOf(p)==='r') ? (sr>=5) : (sr<=4);
-            if(onOwnSide && board[mr][mc]===EMPTY) return true;
-          }
-        }
-      }
-
-      // No attackers found
-      return false;
-    }
-
-    function isCheckmate(board, side){
-      if(!inCheck(board, side)) return false;
-      const mv = generateLegalMoves(board, side);
-      return mv.length===0;
-    }
-    function isStalemate(board, side){
-      if(inCheck(board, side)) return false;
-      const mv = generateLegalMoves(board, side);
-      return mv.length===0;
-    }
-
-    // Evaluation
-    const PIECE_VALUE = {
-      'K': 10000, 'A': 200, 'E': 200, 'H': 400, 'R': 900, 'C': 450, 'S': 100
-    };
-    function evaluate(board){
-      // Simple material balance (Red - Black) + small bonuses for advanced soldiers, safe king
-      let score = 0;
-      for(let r=0;r<10;r++){
-        for(let c=0;c<9;c++){
-          const p = board[r][c];
-          if(p===EMPTY) continue;
-          const v = PIECE_VALUE[p.toUpperCase()] || 0;
-          if(isUpper(p)) score += v; else score -= v;
-          if(p.toUpperCase()==='S'){
-            // encourage advanced soldiers
-            score += isUpper(p) ? ( (9 - r) * 3 ) : ( - r * 3 );
-          }
-        }
-      }
-      return score;
-    }
-
-    // AI: Alpha-beta with simple move ordering
-    function findBestMove(board, side, depth){
-      const maximizing = (side==='r');
-      let bestMove = null;
-      let bestScore = maximizing ? -Infinity : Infinity;
-
-      const moves = generateLegalMoves(board, side);
-      if(moves.length===0) return null;
-
-      // Move ordering: captures first, by MVV-LVA
-      moves.sort((a,b)=> moveOrderScore(b) - moveOrderScore(a));
-
-      const alphaBeta = (depth, alpha, beta, side) => {
-        const legalMoves = generateLegalMoves(board, side);
-        if(depth===0 || legalMoves.length===0){
-          const val = evaluate(board);
-          return val;
-        }
-        // Order
-        legalMoves.sort((a,b)=> moveOrderScore(b) - moveOrderScore(a));
-        if(side==='r'){
-          let value = -Infinity;
-          for(const m of legalMoves){
-            applyTemp(board, m);
-            const sc = alphaBeta(depth-1, alpha, beta, 'b');
-            undoTemp(board, m);
-            if(sc > value){ value = sc; if(depth===aiDepth) bestMove = m; }
-            alpha = Math.max(alpha, value);
-            if(alpha >= beta) break; // beta cutoff
-          }
-          return value;
-        } else {
-          let value = Infinity;
-          for(const m of legalMoves){
-            applyTemp(board, m);
-            const sc = alphaBeta(depth-1, alpha, beta, 'r');
-            undoTemp(board, m);
-            if(sc < value){ value = sc; if(depth===aiDepth) bestMove = m; }
-            beta = Math.min(beta, value);
-            if(alpha >= beta) break; // alpha cutoff
-          }
-          return value;
-        }
-      };
-
-      alphaBeta(depth, -Infinity, Infinity, side);
-      return bestMove || moves[0];
-    }
-
-    function moveOrderScore(m){
-      const capV = m.captured ? (PIECE_VALUE[m.captured.toUpperCase()] || 0) : 0;
-      const moverV = PIECE_VALUE[m.piece.toUpperCase()] || 0;
-      const captureBonus = capV*10 - moverV*0.2; // MVV-LVA-ish
-      const centerBonus = (4 - Math.abs(4 - m.to.c)) + (4.5 - Math.abs(4.5 - m.to.r))*0.3;
-      const promoBonus = (m.piece.toUpperCase()==='S') ? (isUpper(m.piece) ? (rProgress(m) * 0.5) : (rProgress(m) * 0.5)) : 0;
-      return (m.captured?1000:0) + captureBonus + centerBonus + promoBonus;
-    }
-    function rProgress(m){
-      // Positive for advancing soldiers
-      return isUpper(m.piece) ? (m.from.r - m.to.r) : (m.to.r - m.from.r);
-    }
-
-    // Initialize
-    resizeCanvas();
-    resetGame();
-
-  })();
-  </script>
+})();
+</script>
 </body>
 </html>
