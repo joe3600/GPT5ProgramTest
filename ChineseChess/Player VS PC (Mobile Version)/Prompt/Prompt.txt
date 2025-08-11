@@ -2,4 +2,4 @@ GPT-5 (Based on Edge Co-pilot Smart(GPT-5) Option, date 2025-08-11)
 
 Prompt : 
 
-Write a program that play chinese chess (PC vs player) , web edition (based on front-end programming), mobile friendly and mobile first design, responsive web design
+Write a program that play chinese chess (PC vs player) , web edition (based on front-end programming), mobile first design, responsive web design, ensure the screen can be shown all objects, the PC is smart enough to bet most player
