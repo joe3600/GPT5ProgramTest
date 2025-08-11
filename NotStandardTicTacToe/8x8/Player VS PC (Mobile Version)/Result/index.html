@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>8x8 Tic-Tac-Toe — Mobile-first, PC vs Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <style>
+    :root{
+      --bg:#0f172a;          /* slate-900 */
+      --panel:#111827;       /* gray-900 */
+      --text:#e5e7eb;        /* gray-200 */
+      --muted:#9ca3af;       /* gray-400 */
+      --accent:#22d3ee;      /* cyan-400 */
+      --accent-2:#a78bfa;    /* violet-400 */
+      --danger:#f87171;      /* red-400 */
+      --ok:#34d399;          /* emerald-400 */
+
+      --gap: 0.5rem;
+      --radius: 12px;
+      --shadow: 0 6px 24px rgba(0,0,0,.35);
+
+      --board-max: min(92vw, 78vh);
+      --cell-font: clamp(18px, 6.5vmin, 36px);
+      --ui-font: clamp(14px, 2.8vmin, 18px);
+      --title-font: clamp(18px, 3.8vmin, 24px);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(1200px 600px at 60% -10%, #0b1228 0%, #0f172a 45%, #0a1022 100%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .app {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: calc(var(--gap) * 1.2);
+      padding: 12px clamp(10px, 3.5vw, 22px) 16px;
+    }
+    header, footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gap);
+    }
+    header h1 {
+      font-size: var(--title-font);
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: .2px;
+    }
+    .controls {
+      display: flex;
+      gap: var(--gap);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .panel {
+      background: linear-gradient(180deg, #0f1a36 0%, #0c152c 100%);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 8px;
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .panel label {
+      font-size: var(--ui-font);
+      color: var(--muted);
+    }
+    select, button {
+      font-size: var(--ui-font);
+      background: #0b1329;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    button.primary {
+      background: linear-gradient(135deg, #1d3a7a 0%, #153166 100%);
+      border-color: rgba(34,211,238,0.28);
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      justify-items: center;
+      gap: calc(var(--gap) * 1);
+    }
+    .status {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      max-width: 900px;
+    }
+    .status .line { height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.16), rgba(255,255,255,0.04)); }
+    .status .text { text-align: center; font-size: var(--ui-font); color: var(--muted); }
+
+    .board-wrap {
+      width: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .board {
+      width: var(--board-max);
+      height: var(--board-max);
+      background: linear-gradient(180deg, #0e1630, #0d142b);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      gap: 6px;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .cell {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: radial-gradient(140% 120% at 30% 20%, #0f1935 0%, #0b142b 70%);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: var(--cell-font);
+      color: var(--accent);
+      aspect-ratio: 1 / 1;
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+    }
+    .cell:hover { transform: translateY(-1px); }
+    .cell:active { transform: translateY(0); }
+    .cell.X { color: var(--accent); text-shadow: 0 0 14px rgba(34,211,238,.25); }
+    .cell.O { color: var(--accent-2); text-shadow: 0 0 14px rgba(167,139,250,.25); }
+    .cell.win {
+      border-color: rgba(255,255,255,0.4);
+      background: linear-gradient(145deg, rgba(34,211,238,0.16), rgba(167,139,250,0.16));
+      animation: pulse 1s ease-in-out infinite alternate;
+    }
+    @keyframes pulse { from { box-shadow: inset 0 0 0 0 rgba(255,255,255,0.0);} to { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18);} }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: var(--ui-font);
+      flex-wrap: wrap;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 4px; display: inline-block; }
+    .dot.x { background: var(--accent); }
+    .dot.o { background: var(--accent-2); }
+    .pill {
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #0b1329;
+    }
+
+    footer { opacity: .85; font-size: var(--ui-font); color: var(--muted); justify-content: center; }
+
+    @media (min-width: 820px) {
+      .app { padding-top: 16px; }
+      .controls { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>8×8 Tic‑Tac‑Toe</h1>
+      <div class="controls panel" role="group" aria-label="Game controls">
+        <label for="mark">Your mark</label>
+        <select id="mark" aria-label="Your mark">
+          <option value="X" selected>X</option>
+          <option value="O">O</option>
+        </select>
+        <label for="starter">First move</label>
+        <select id="starter" aria-label="First move">
+          <option value="human" selected>You</option>
+          <option value="ai">Computer</option>
+        </select>
+        <label for="difficulty">AI</label>
+        <select id="difficulty" aria-label="AI strength">
+          <option value="normal" selected>Normal</option>
+          <option value="strong">Strong</option>
+          <option value="extreme">Extreme</option>
+        </select>
+        <button id="newGame" class="primary">New game</button>
+      </div>
+    </header>
+
+    <div class="main">
+      <div class="status">
+        <div class="line"></div>
+        <div id="statusText" class="text">Your turn</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="board-wrap">
+        <div id="board" class="board" aria-label="8 by 8 tic-tac-toe board" role="grid"></div>
+      </div>
+
+      <div class="legend">
+        <span class="pill"><span class="dot x"></span> You</span>
+        <span class="pill"><span class="dot o"></span> Computer</span>
+        <span class="pill">Win = full row, column, or main diagonal</span>
+      </div>
+    </div>
+
+    <footer>
+      Built for mobile-first play. Scales to your screen so everything stays in view.
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const SIZE = 8;
+      const EMPTY = null;
+
+      // Precompute all winning lines: 8 rows, 8 cols, 2 main diagonals (↘ and ↙)
+      const LINES = [];
+      // rows
+      for (let r = 0; r < SIZE; r++) {
+        const row = [];
+        for (let c = 0; c < SIZE; c++) row.push(r * SIZE + c);
+        LINES.push(row);
+      }
+      // cols
+      for (let c = 0; c < SIZE; c++) {
+        const col = [];
+        for (let r = 0; r < SIZE; r++) col.push(r * SIZE + c);
+        LINES.push(col);
+      }
+      // main diagonals of length 8 only (top-left to bottom-right, step 9; top-right to bottom-left, step 7)
+      LINES.push([0, 9, 18, 27, 36, 45, 54, 63]); // ↘
+      LINES.push([7, 14, 21, 28, 35, 42, 49, 56]); // ↙
+
+      // UI elements
+      const boardEl = document.getElementById('board');
+      const statusEl = document.getElementById('statusText');
+      const newBtn = document.getElementById('newGame');
+      const markSel = document.getElementById('mark');
+      const starterSel = document.getElementById('starter');
+      const diffSel = document.getElementById('difficulty');
+
+      // Game state
+      let board, human, ai, turn, winner, winningLine, gameOver;
+      let settings = getSettings();
+
+      function getSettings() {
+        const userMark = (markSel?.value || 'X');
+        const starter = (starterSel?.value || 'human');
+        const diff = (diffSel?.value || 'normal');
+        const confByDiff = {
+          normal:  { depth: 2, maxMoves: 10 },
+          strong:  { depth: 3, maxMoves: 12 },
+          extreme: { depth: 4, maxMoves: 14 },
+        };
+        return {
+          userMark,
+          starter,
+          diff,
+          ...confByDiff[diff] || confByDiff.normal,
+        };
+      }
+
+      function init() {
+        settings = getSettings();
+        human = settings.userMark === 'X' ? 'X' : 'O';
+        ai = human === 'X' ? 'O' : 'X';
+        board = Array(SIZE * SIZE).fill(EMPTY);
+        turn = settings.starter === 'ai' ? ai : human;
+        winner = null;
+        winningLine = null;
+        gameOver = false;
+        renderBoard();
+        updateStatus();
+
+        if (turn === ai) {
+          setTimeout(aiTurn, 300);
+        }
+      }
+
+      // Build board cells once
+      function renderBoard() {
+        boardEl.innerHTML = '';
+        boardEl.style.pointerEvents = gameOver ? 'none' : 'auto';
+        for (let i = 0; i < SIZE * SIZE; i++) {
+          const btn = document.createElement('button');
+          btn.className = 'cell';
+          btn.setAttribute('role', 'gridcell');
+          btn.setAttribute('aria-label', `Cell ${Math.floor(i / SIZE) + 1}, ${i % SIZE + 1}`);
+          btn.dataset.idx = i;
+          btn.textContent = board[i] || '';
+          if (board[i]) btn.classList.add(board[i]);
+          if (winningLine && winningLine.includes(i)) btn.classList.add('win');
+
+          btn.addEventListener('click', () => onCellClick(i));
+          boardEl.appendChild(btn);
+        }
+      }
+
+      function onCellClick(i) {
+        if (gameOver) return;
+        if (turn !== human) return;
+        if (board[i] !== EMPTY) return;
+
+        board[i] = human;
+        turn = ai;
+        concludeOrContinue(() => setTimeout(aiTurn, 150));
+      }
+
+      function concludeOrContinue(next) {
+        const res = checkEnd(board);
+        winner = res.winner;
+        winningLine = res.line;
+        gameOver = !!winner || res.draw;
+        renderBoard();
+        updateStatus(res.draw);
+
+        if (!gameOver && typeof next === 'function') next();
+      }
+
+      function updateStatus(draw = false) {
+        if (winner) {
+          statusEl.textContent = winner === human
+            ? 'You win!'
+            : 'Computer wins!';
+          statusEl.style.color = winner === human ? 'var(--ok)' : 'var(--danger)';
+        } else if (draw) {
+          statusEl.textContent = 'Draw!';
+          statusEl.style.color = 'var(--muted)';
+        } else {
+          statusEl.textContent = turn === human ? 'Your turn' : 'Computer is thinking…';
+          statusEl.style.color = 'var(--muted)';
+        }
+      }
+
+      function aiTurn() {
+        if (gameOver) return;
+
+        // 1) Immediate win if available
+        const winMove = findTactical(board, ai, 7);
+        if (winMove != null) {
+          board[winMove] = ai;
+          turn = human;
+          concludeOrContinue();
+          return;
+        }
+        // 2) Block opponent's immediate win (7 -> 8)
+        const blockMove = findTactical(board, human, 7);
+        if (blockMove != null) {
+          board[blockMove] = ai;
+          turn = human;
+          concludeOrContinue();
+          return;
+        }
+
+        // 3) Opening preference: center bias
+        if (isBoardEmpty(board)) {
+          const centers = [27, 28, 35, 36]; // middle 4 cells
+          const choice = centers[Math.floor(Math.random() * centers.length)];
+          board[choice] = ai;
+          turn = human;
+          concludeOrContinue();
+          return;
+        }
+
+        // 4) Alpha-beta search with pruned move list
+        const { move } = findBestMove(board, ai, settings.depth, settings.maxMoves);
+        if (move != null) {
+          board[move] = ai;
+        } else {
+          // Fallback: random among top candidates
+          const cands = getCandidateMoves(board, ai, settings.maxMoves);
+          if (cands.length) board[cands[0].idx] = ai;
+        }
+        turn = human;
+        concludeOrContinue();
+      }
+
+      // Tactical: find a move that completes a line of targetCount -> 8
+      function findTactical(b, player, targetCount) {
+        for (const line of LINES) {
+          let count = 0, empties = [];
+          for (const idx of line) {
+            if (b[idx] === player) count++;
+            else if (b[idx] === EMPTY) empties.push(idx);
+            else { count = -999; break; } // blocked by opponent
+          }
+          if (count === targetCount && empties.length === 8 - targetCount) {
+            // Return one empty that finishes the line (when targetCount==7 → exactly 1)
+            return empties[0];
+          }
+        }
+        return null;
+      }
+
+      function isBoardEmpty(b) {
+        for (let i = 0; i < b.length; i++) if (b[i] !== EMPTY) return false;
+        return true;
+      }
+
+      function checkEnd(b) {
+        for (const line of LINES) {
+          const first = b[line[0]];
+          if (!first) continue;
+          let ok = true;
+          for (let k = 1; k < line.length; k++) {
+            if (b[line[k]] !== first) { ok = false; break; }
+          }
+          if (ok) return { winner: first, line };
+        }
+        const draw = b.every(x => x !== EMPTY);
+        return { winner: null, line: null, draw };
+      }
+
+      // Heuristic evaluation: reward uncontested progress, heavily weight near-complete lines.
+      function evaluate(b, me, opp) {
+        let score = 0;
+        for (const line of LINES) {
+          let myCount = 0, oppCount = 0;
+          for (const idx of line) {
+            if (b[idx] === me) myCount++;
+            else if (b[idx] === opp) oppCount++;
+          }
+          if (myCount > 0 && oppCount === 0) {
+            // Bonus ramps up quickly as line fills
+            score += lineScore(myCount);
+          } else if (oppCount > 0 && myCount === 0) {
+            // Penalize opp progress
+            score -= lineScore(oppCount) * 1.05; // slightly favor blocking
+          }
+        }
+        return score;
+      }
+      function lineScore(cnt) {
+        // Nonlinear ramp: 1, 8, 27, 64, 125, 216, 343, 99999
+        if (cnt >= 8) return 99999;
+        return cnt * cnt * cnt;
+      }
+
+      // Candidate move ordering by local influence
+      function getCandidateMoves(b, me, maxMoves = 12) {
+        const opp = me === 'X' ? 'O' : 'X';
+        const cellScore = new Array(b.length).fill(0);
+
+        // Score cells by how many favorable lines they touch and proximity to center
+        const centerR = (SIZE - 1) / 2, centerC = (SIZE - 1) / 2;
+        for (const line of LINES) {
+          let myCount = 0, oppCount = 0;
+          for (const idx of line) {
+            if (b[idx] === me) myCount++;
+            else if (b[idx] === opp) oppCount++;
+          }
+          if (myCount > 0 && oppCount === 0) {
+            for (const idx of line) if (b[idx] === EMPTY) cellScore[idx] += 3 + myCount * 2;
+          } else if (oppCount > 0 && myCount === 0) {
+            for (const idx of line) if (b[idx] === EMPTY) cellScore[idx] += 2 + oppCount * 1.8;
+          } else {
+            for (const idx of line) if (b[idx] === EMPTY) cellScore[idx] += 0.2;
+          }
+        }
+        for (let i = 0; i < b.length; i++) {
+          if (b[i] !== EMPTY) continue;
+          const r = Math.floor(i / SIZE), c = i % SIZE;
+          const dr = Math.abs(r - centerR), dc = Math.abs(c - centerC);
+          const centerBias = 2.4 - 0.4 * (dr + dc);
+          cellScore[i] += centerBias;
+        }
+
+        const cands = [];
+        for (let i = 0; i < b.length; i++) {
+          if (b[i] === EMPTY) cands.push({ idx: i, score: cellScore[i] });
+        }
+        cands.sort((a, b2) => b2.score - a.score);
+        return cands.slice(0, maxMoves);
+      }
+
+      // Alpha-beta (negamax) with shallow depth and ordered, pruned moves
+      function findBestMove(b, me, depth, maxMoves) {
+        const opp = me === 'X' ? 'O' : 'X';
+        const WIN = 1_000_000, LOSE = -1_000_000;
+
+        // Quick tactical checks embedded in search
+        function quickTactical(bb, player) {
+          // If player can finish now, it's winning
+          const m = findTactical(bb, player, 7);
+          if (m != null) return { winning: true, move: m };
+          return { winning: false, move: null };
+        }
+
+        function negamax(bb, d, alpha, beta, player) {
+          const res = checkEnd(bb);
+          if (res.winner) {
+            return res.winner === me ? WIN - (SIZE*SIZE - emptyCount(bb)) : LOSE + (SIZE*SIZE - emptyCount(bb));
+          }
+          if (res.draw || d === 0) {
+            return evaluate(bb, me, opp);
+          }
+
+          // Tactical short-circuit
+          const qt = quickTactical(bb, player);
+          if (qt.winning) return player === me ? WIN - 1 : LOSE + 1;
+
+          let best = -Infinity;
+          const moves = getCandidateMoves(bb, player, maxMoves);
+          for (const { idx } of moves) {
+            bb[idx] = player;
+            const val = -negamax(bb, d - 1, -beta, -alpha, player === 'X' ? 'O' : 'X');
+            bb[idx] = EMPTY;
+
+            if (val > best) best = val;
+            if (val > alpha) alpha = val;
+            if (alpha >= beta) break; // alpha-beta cutoff
+          }
+          // If no moves (should be draw), eval:
+          if (best === -Infinity) return evaluate(bb, me, opp);
+          return best;
+        }
+
+        let bestMove = null;
+        let bestScore = -Infinity;
+        const alphaInit = -Infinity, betaInit = Infinity;
+
+        const moves = getCandidateMoves(b, me, maxMoves);
+        for (const { idx } of moves) {
+          b[idx] = me;
+          const val = -negamax(b, depth - 1, -betaInit, -alphaInit, opp);
+          b[idx] = EMPTY;
+          if (val > bestScore) { bestScore = val; bestMove = idx; }
+        }
+        return { move: bestMove, score: bestScore };
+      }
+
+      function emptyCount(b){ let n=0; for (let i=0;i<b.length;i++) if (b[i]===EMPTY) n++; return n; }
+
+      // Wire up
+      newBtn.addEventListener('click', init);
+      markSel.addEventListener('change', init);
+      starterSel.addEventListener('change', init);
+      diffSel.addEventListener('change', init);
+
+      // Initialize UI and start game
+      init();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+GPT-5 (Based on Edge Co-pilot Smart(GPT-5) Option, date 2025-08-11)
+
+Prompt : 
+
+Write a program that play 8x8 tic-tac-toe (PC vs player) , winning condition is entire line same (8-rows same or 8 column same or 8 diagonal same), web edition (based on front-end programming), mobile first design, responsive web design, ensure the screen can be shown all objects, the PC is smart enough to bet most player.

@@ -1,0 +1,7 @@
+GPT-5 (Based on Edge Co-pilot Smart(GPT-5) Option, date 2025-08-11)
+
+Prompt : 
+
+Write a shopping cart that support e-Payment system with VISA, MasterCard, Paypal, Apple Pay, Google Pay, Alipay China, Alipay HK, Wechat Pay China, Wechat Pay HK, Wechat Pay Global, Payme
+
+Server Side Program Requirement: PHP 8.x, MariaDB 10.x
