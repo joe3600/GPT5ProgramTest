@@ -1,0 +1,5 @@
+GPT-5 (Based on Edge Co-pilot Smart(GPT-5) Option, date 2025-08-11)
+
+Prompt : 
+
+write a program that play chinese chess (PC vs player) , web edition (based on front-end programming)

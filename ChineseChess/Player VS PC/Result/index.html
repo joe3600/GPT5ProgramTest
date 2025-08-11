@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Xiangqi (Chinese Chess) — PC vs Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>Xiangqi (Chinese Chess)</h1>
+    <div class="toolbar">
+      <label>
+        You play as:
+        <select id="sideSelect">
+          <option value="red" selected>Red (moves first)</option>
+          <option value="black">Black</option>
+        </select>
+      </label>
+      <label>
+        AI depth:
+        <select id="depthSelect">
+          <option value="2">2 (fast)</option>
+          <option value="3" selected>3 (balanced)</option>
+          <option value="4">4 (stronger, slower)</option>
+        </select>
+      </label>
+      <button id="newGameBtn">New Game</button>
+      <button id="undoBtn">Undo</button>
+    </div>
+
+    <div class="board-container">
+      <canvas id="board" width="540" height="600"></canvas>
+      <div id="status"></div>
+    </div>
+
+    <div class="notes">
+      Tips:
+      <ul>
+        <li>Click a piece to see its legal moves, then click a destination.</li>
+        <li>Red moves up the board; Black moves down.</li>
+        <li>Cannons capture only with a single “screen” piece between.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
